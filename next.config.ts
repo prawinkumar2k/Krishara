@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+  output: "standalone", // small Docker image (Tracen topic 7)
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

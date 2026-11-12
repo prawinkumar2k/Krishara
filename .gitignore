@@ -39,3 +39,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local database
+*.db
+*.db-journal
+!.env.example
+
+# uploaded product images (runtime)
+public/uploads/
+.next-verify/
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
