@@ -10,10 +10,13 @@
     "db:push": "drizzle-kit push --force",
     "db:seed": "tsx --env-file=.env.local src/db/seed.ts",
     "db:studio": "drizzle-kit studio",
-    "test": "tsx --conditions=react-server --env-file=.env.local scripts/verify-reliability.ts && tsx --conditions=react-server --env-file=.env.local scripts/verify-checkout.ts",
-    "test:e2e": "node --env-file=.env.local scripts/e2e.mjs"
+    "test": "tsx --conditions=react-server --env-file=.env.local scripts/verify-reliability.ts && tsx --conditions=react-server --env-file=.env.local scripts/verify-checkout.ts && tsx --conditions=react-server --env-file=.env.local scripts/verify-email.ts && tsx --conditions=react-server --env-file=.env.local scripts/verify-storage.ts",
+    "test:e2e": "node --env-file=.env.local scripts/e2e.mjs && node --env-file=.env.local scripts/e2e-features.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1167.0",
     "@libsql/client": "^0.18.0",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.4",
@@ -24,6 +27,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
+    "sharp": "^0.35.5",
     "zod": "^4.6.7"
   },
   "devDependencies": {

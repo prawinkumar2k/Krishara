@@ -153,3 +153,8 @@ body {
   from { transform: scale(1.12); }
   to { transform: scale(1.02); }
 }
+
+/* Empty-state rows span the whole (horizontally scrollable) table; keep their text in view on phones. */
+@media (max-width: 767px) {
+  td[colspan] { text-align: left !important; }
+}

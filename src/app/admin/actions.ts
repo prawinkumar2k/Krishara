@@ -1,7 +1,5 @@
 "use server";
 
-import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath, updateTag } from "next/cache";
@@ -11,6 +9,7 @@ import { db, schema, writeTransaction } from "@/db";
 import { requireAdmin } from "@/lib/dal";
 import { publish } from "@/lib/events";
 import { processDueJobs } from "@/lib/queue";
+import { detectImage, saveImage } from "@/lib/storage";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -106,13 +105,15 @@ export async function uploadImage(fd: FormData): Promise<{ url?: string; error?:
   const file = fd.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "No file." };
   if (file.size > 4 * 1024 * 1024) return { error: "Max 4 MB." };
-  const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[file.type];
-  if (!ext) return { error: "Only JPG, PNG or WebP." };
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(dir, { recursive: true });
-  const name = `${randomUUID()}.${ext}`;
-  await writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
-  return { url: `/uploads/${name}` };
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const img = detectImage(bytes); // real signature check, not the browser-reported type
+  if (!img) return { error: "Only JPG, PNG or WebP images." };
+  try {
+    return { url: await saveImage(bytes, img) };
+  } catch (e) {
+    console.error("[upload]", e);
+    return { error: "Couldn't store the image. Check the storage settings and try again." };
+  }
 }
 
 /* ───────────────────────── Orders ───────────────────────── */
@@ -217,4 +218,19 @@ export async function saveSettings(_: FormState, fd: FormData): Promise<FormStat
     await db.insert(schema.settings).values({ key, value: String(value) }).onConflictDoUpdate({ target: schema.settings.key, set: { value: String(value) } });
   revalidatePath("/admin/settings");
   return { ok: true };
+}
+
+/* ───────────────────────── Reviews ───────────────────────── */
+
+export async function moderateReview(id: string, action: "approve" | "delete") {
+  await requireAdmin();
+  const [r] = await db
+    .select({ slug: schema.products.slug })
+    .from(schema.reviews)
+    .innerJoin(schema.products, eq(schema.reviews.productId, schema.products.id))
+    .where(eq(schema.reviews.id, id));
+  if (action === "approve") await db.update(schema.reviews).set({ isApproved: true }).where(eq(schema.reviews.id, id));
+  else await db.delete(schema.reviews).where(eq(schema.reviews.id, id));
+  revalidatePath("/admin/reviews");
+  if (r) revalidatePath(`/product/${r.slug}`);
 }

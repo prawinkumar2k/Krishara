@@ -17,10 +17,13 @@ export const getCurrentUser = cache(async () => {
       name: schema.users.name,
       phone: schema.users.phone,
       role: schema.users.role,
+      tokenVersion: schema.users.tokenVersion,
     })
     .from(schema.users)
     .where(eq(schema.users.id, session.userId));
-  return user ?? null;
+  // Sessions issued before a password change carry an older version and are rejected.
+  if (!user || (session.v ?? 0) !== user.tokenVersion) return null;
+  return user;
 });
 
 export async function requireUser(next = "/account") {

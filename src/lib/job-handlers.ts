@@ -10,6 +10,7 @@ registerHandler("email.order_confirmation", (p) => sendEmail({ template: "order_
 registerHandler("email.payment_receipt", (p) => sendEmail({ template: "payment_receipt", ...p }));
 registerHandler("email.shipped", (p) => sendEmail({ template: "shipped", ...p }));
 registerHandler("email.cancelled", (p) => sendEmail({ template: "cancelled", ...p }));
+registerHandler("email.password_reset", (p) => sendEmail({ template: "password_reset", ...p }));
 
 // Analytics subscriber — events already land in event_log; forward to a warehouse/GA here later.
 registerHandler("analytics.record", async () => {});

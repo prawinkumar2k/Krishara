@@ -165,6 +165,9 @@ export function CheckoutClient({ user, addresses, defaultCoupon }: { user: { nam
     else { setError("Simulated payment failed."); setSimModal(null); }
   };
 
+  const methodOk = method === "cod" ? quote?.codAllowed !== false : quote?.onlineAvailable !== false;
+  const noPaymentPossible = !!quote && quote.onlineAvailable === false && !quote.codAllowed;
+
   if (cart.length === 0 && !submitting)
     return (
       <div className="mx-auto max-w-md rounded-3xl border border-dashed border-[#c6a253]/60 bg-white p-12 text-center">
@@ -210,7 +213,7 @@ export function CheckoutClient({ user, addresses, defaultCoupon }: { user: { nam
           <h2 className="flex items-center gap-2 font-editorial text-2xl font-semibold text-[#09492e]"><CreditCard className="h-5 w-5 text-[#c6a253]" /> Payment</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {([
-              ["razorpay", "UPI · Cards · Netbanking", "Pay securely online", CreditCard, quote?.onlineAvailable !== false],
+              ["razorpay", "UPI · Cards · Netbanking", quote?.onlineAvailable === false ? "Temporarily unavailable" : "Pay securely online", CreditCard, quote?.onlineAvailable !== false],
               ["cod", "Cash on Delivery", quote && !quote.codAllowed ? "Not available for this order value" : "Pay when it arrives", Banknote, quote?.codAllowed !== false],
             ] as const).map(([id, title, sub, Icon, enabled]) => (
               <button key={id} type="button" disabled={!enabled} onClick={() => setMethod(id)} aria-pressed={method === id}
@@ -268,7 +271,12 @@ export function CheckoutClient({ user, addresses, defaultCoupon }: { user: { nam
           ) : null}
         </AnimatePresence>
 
-        <motion.button type="submit" whileTap={{ scale: 0.98 }} disabled={submitting || loadingQuote || !quote || quote.lines.length === 0}
+        {noPaymentPossible && (
+          <p role="alert" className="mt-4 rounded-xl border border-[#c6a253]/50 bg-[#c6a253]/10 p-3 text-xs text-[#7a5c14]">
+            Online payment is temporarily unavailable and Cash on Delivery isn&apos;t offered for orders this large. Please split your order or try again shortly.
+          </p>
+        )}
+        <motion.button type="submit" whileTap={{ scale: 0.98 }} disabled={submitting || loadingQuote || !quote || quote.lines.length === 0 || !methodOk}
           className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#09492e] text-sm font-semibold text-[#fbf8f3] shadow-lg shadow-[#09492e]/25 transition-colors hover:bg-[#06321f] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed">
           {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing…</> : <><Lock className="h-4 w-4" /> {method === "cod" ? "Place order" : `Pay ${formatINR(quote?.total ?? 0)}`}</>}
         </motion.button>

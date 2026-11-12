@@ -49,10 +49,13 @@ Verified by `npm test` (`scripts/verify-reliability.ts`, 10 checks incl. concurr
 5. ✅ **Checkout + orders** — address book, server quote, coupons, shipping/GST, COD + Razorpay, idempotent place‑order, atomic stock reservation, saga compensation, signed verify + webhook, confirmation animation.
 6. ✅ **Customer account** — orders list + detail timeline + self‑cancel, addresses, profile. *(Wishlist is browser‑local; review submission UI not built — reviews display only.)*
 7. ✅ **Admin** — dashboard (KPIs, 14‑day chart, low stock), orders (status workflow, tracking, cancel/refund), products (CRUD, image upload, sizes/stock), customers, coupons, system (queue/DLQ/events), settings.
-8. ⏳ **Remaining** — real email templates (jobs run; emails log to console until `RESEND_API_KEY`), review submission, password reset, cross‑device cart, invoices/PDF, image storage for serverless (uploads write to `public/uploads`), deploy + schedule the 3 cron jobs, Razorpay live keys, `metadataBase`/sitemap.
+8. ✅ **Completion pass** — HTML email templates (welcome, order confirmation, payment receipt, shipped, cancelled, password reset; logged to the console until `RESEND_API_KEY` is set), password reset (hashed single-use 1‑hour tokens), verified‑buyer reviews with admin moderation, GST invoices (print / save as PDF), bag + wishlist sync across devices for signed‑in users, `sitemap.xml`, `robots.txt`, `metadataBase`.
+9. ✅ **Hardening** — password change signs out every other device (`users.token_version`), `vercel.json` schedules the three cron jobs, phone layout verified with real device emulation (390 / 360 / 320 px: no sideways scroll on any page), clear "payment unavailable" state at checkout.
+10. ✅ **Production readiness** — real SQL migrations (`db:generate` / `db:migrate`, verified against an empty DB), S3/R2 image storage with real file‑signature validation, README with deploy + go‑live checklist, production bundle verified the way Docker runs it (found + fixed: sharp's native libs were missing from the standalone output, which would have served full‑size images), `npm audit` clean for production deps, bag sync verified in two real browser profiles.
+11. ⏳ **Needs your accounts/decisions** — deploy; live Razorpay keys and webhook; `RESEND_API_KEY` + sender domain; real `SELLER_GSTIN`/address; S3/R2 credentials (code is tested only against an unreachable endpoint, not a live bucket); the Docker image itself has not been built (Docker isn't installed here); Vercel Hobby allows daily crons only.
 
 ## Testing
-`npm test` → 20 checks (reliability + checkout money path). `npm run test:e2e` (server running; see scripts/e2e.mjs header) → 16 HTTP checks.
+`npm test` → 28 checks (reliability, checkout money path, emails, storage). `npm run test:e2e` (needs a running production server; see headers of scripts/e2e.mjs and scripts/e2e-features.mjs) → 31 HTTP checks + 5 real‑browser sync checks. Note: the password-reset limiter is in memory, so restart the server between repeated runs.
 
 ## Security rules
 bcrypt passwords · httpOnly+SameSite+Secure cookie · role never taken from client · open‑redirect‑safe `next` · prices from DB only · payment signature verified server‑side · login/register rate‑limited · identical error for unknown email vs bad password.
@@ -65,3 +68,5 @@ bcrypt passwords · httpOnly+SameSite+Secure cookie · role never taken from cli
 - [x] Cache layer for catalog reads
 - [x] Cron protected by distributed lock
 - [x] Circuit breaker / graceful degradation primitive
+
+`node --env-file=.env.local scripts/mobile-audit.mjs` (env: BASE, OUT, W) → real mobile emulation: overflow report + full-page screenshots of 11 pages.

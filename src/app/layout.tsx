@@ -26,6 +26,7 @@ const oswald = Oswald({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
   title: "KRISHARA · Kanchipuram Pure Silk Sarees & Bridal Heritage",
   description:
     "Woven for the Divine. Shop handwoven Kanchipuram pure silk sarees, zari brocades, half sarees, bridal muhurtham weaves, and temple jewelry at Krishara.",

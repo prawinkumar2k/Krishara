@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import { login, register, type AuthState } from "@/app/(auth)/actions";
 
 const input =
@@ -10,9 +10,11 @@ const input =
 export function AuthForm({
   mode,
   next,
+  notice,
 }: {
   mode: "login" | "register";
   next?: string;
+  notice?: string;
 }) {
   const [state, action, pending] = useActionState<AuthState, FormData>(
     mode === "login" ? login : register,
@@ -20,6 +22,13 @@ export function AuthForm({
   );
   const isLogin = mode === "login";
   const nextQuery = next ? `?next=${encodeURIComponent(next)}` : "";
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  const fillDemoCredentials = () => {
+    if (emailRef.current) emailRef.current.value = "admin@krishara.in";
+    if (passwordRef.current) passwordRef.current.value = "ChangeMe!123";
+  };
 
   return (
     <main className="min-h-screen bg-[#fbf8f3] flex items-center justify-center px-4 py-16">
@@ -40,6 +49,9 @@ export function AuthForm({
             : "Save your bag, wishlist and addresses."}
         </p>
 
+        {notice && (
+          <p role="status" className="mb-4 rounded-xl border border-[#09492e]/20 bg-[#09492e]/5 p-3 text-center text-xs font-semibold text-[#09492e]">{notice}</p>
+        )}
         <form action={action} className="space-y-4">
           <input type="hidden" name="next" value={next ?? ""} />
           {!isLogin && (
@@ -53,6 +65,7 @@ export function AuthForm({
             />
           )}
           <input
+            ref={emailRef}
             name="email"
             type="email"
             required
@@ -72,6 +85,7 @@ export function AuthForm({
             />
           )}
           <input
+            ref={passwordRef}
             name="password"
             type="password"
             required
@@ -89,6 +103,12 @@ export function AuthForm({
             </p>
           )}
 
+          {isLogin && (
+            <p className="-mt-1 text-right text-xs">
+              <Link href="/forgot-password" className="font-semibold text-[#09492e] underline decoration-[#c6a253] underline-offset-4">Forgot password?</Link>
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={pending}
@@ -97,6 +117,31 @@ export function AuthForm({
             {pending ? "Please wait…" : isLogin ? "Sign in" : "Create account"}
           </button>
         </form>
+
+        {isLogin && (
+          <div className="mt-5 rounded-2xl border border-[#c6a253]/35 bg-[#fbf8f3] p-4 text-xs text-[#12231a]/80">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="font-semibold uppercase tracking-wider text-[10px] text-[#09492e]">
+                Demo Admin Credentials
+              </span>
+              <button
+                type="button"
+                onClick={fillDemoCredentials}
+                className="rounded-full bg-[#09492e] px-3 py-1 text-[11px] font-semibold text-[#fbf8f3] hover:bg-[#06321f] transition cursor-pointer"
+              >
+                Fill credentials
+              </button>
+            </div>
+            <p>
+              <span className="text-[#12231a]/60">Email:</span>{" "}
+              <code className="font-mono font-semibold text-[#09492e]">admin@krishara.in</code>
+            </p>
+            <p className="mt-0.5">
+              <span className="text-[#12231a]/60">Password:</span>{" "}
+              <code className="font-mono font-semibold text-[#09492e]">ChangeMe!123</code>
+            </p>
+          </div>
+        )}
 
         <p className="mt-6 text-center text-sm text-[#12231a]/70">
           {isLogin ? "New to Krishara? " : "Already have an account? "}

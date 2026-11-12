@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+import { usePathname } from "next/navigation";
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 
 export interface CartItem {
@@ -42,6 +44,7 @@ interface StoreContextValue {
   cartCount: number;
   cartSubtotal: number;
   showToast: (msg: string) => void;
+  syncAuth: () => void;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -51,6 +54,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const hydrated = useRef(false);
+  const [ready, setReady] = useState(false);
+  const authedSync = useRef(false); // we've started syncing for the signed-in user
+  const serverLoaded = useRef(false); // server copy merged in — only now is it safe to push
   useEffect(() => {
     try {
       const c = localStorage.getItem("krishara.cart");
@@ -62,7 +68,54 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       /* storage unavailable or corrupt — start fresh */
     }
     hydrated.current = true;
+    setReady(true);
   }, []);
+
+  // Cross-device sync. The `krishara_auth` cookie is only a hint that a session exists.
+  const syncAuth = useCallback(() => {
+    if (!ready) return;
+    const authed = document.cookie.split("; ").includes("krishara_auth=1");
+    if (authed && !authedSync.current) {
+      authedSync.current = true;
+      fetch("/api/cart")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((server: { cart?: CartItem[]; wishlist?: WishlistItem[] } | null) => {
+          if (!server) { authedSync.current = false; return; }
+          setCart((local) => {
+            const m = new Map<string, CartItem>();
+            for (const it of [...(server.cart ?? []), ...local]) {
+              const k = `${it.id}|${it.size ?? ""}`;
+              const prev = m.get(k);
+              m.set(k, prev ? { ...it, quantity: Math.min(10, Math.max(prev.quantity, it.quantity)) } : it);
+            }
+            return [...m.values()];
+          });
+          setWishlist((local) => {
+            const m = new Map<string, WishlistItem>();
+            for (const it of [...(server.wishlist ?? []), ...local]) m.set(it.id, it);
+            return [...m.values()];
+          });
+          serverLoaded.current = true;
+        })
+        .catch(() => { authedSync.current = false; });
+    } else if (!authed && authedSync.current) {
+      // Signed out: don't leave the previous person's bag on a shared device.
+      authedSync.current = false;
+      serverLoaded.current = false;
+      setCart([]);
+      setWishlist([]);
+    }
+  }, [ready]);
+  useEffect(() => { syncAuth(); }, [syncAuth]);
+
+  // Push changes to the server (debounced) once the server copy has been merged.
+  useEffect(() => {
+    if (!ready || !authedSync.current || !serverLoaded.current) return;
+    const t = setTimeout(() => {
+      fetch("/api/cart", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cart, wishlist }) }).catch(() => {});
+    }, 700);
+    return () => clearTimeout(t);
+  }, [cart, wishlist, ready]);
   useEffect(() => {
     if (!hydrated.current) return;
     try {
@@ -199,8 +252,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         cartCount,
         cartSubtotal,
         showToast,
+        syncAuth,
       }}
     >
+      <Suspense fallback={null}><RouteSync /></Suspense>
       {children}
     </StoreContext.Provider>
   );
@@ -222,3 +277,11 @@ export function formatINR(amount: number): string {
   }).format(amount);
 }
 
+
+/** Re-checks sign-in state after every client navigation (login/logout are navigations, not reloads). */
+function RouteSync() {
+  const pathname = usePathname();
+  const { syncAuth } = useStore();
+  useEffect(() => { syncAuth(); }, [pathname, syncAuth]);
+  return null;
+}

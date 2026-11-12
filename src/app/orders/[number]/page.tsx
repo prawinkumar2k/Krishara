@@ -97,6 +97,7 @@ async function Content({ params, searchParams }: { params: Promise<{ number: str
         </Reveal>
       </div>
       <div className="mt-8 flex flex-wrap gap-3">
+        {order.status !== "pending" && order.status !== "cancelled" && <Link href={`/orders/${order.number}/invoice`} className="rounded-full border border-[#c6a253] px-6 py-3 text-sm font-semibold text-[#7a5c14]">Download invoice</Link>}
         <Link href="/account" className="rounded-full border border-[#09492e] px-6 py-3 text-sm font-semibold text-[#09492e]">All orders</Link>
         <Link href="/shop" className="rounded-full bg-[#09492e] px-6 py-3 text-sm font-semibold text-[#fbf8f3]">Continue shopping</Link>
       </div>

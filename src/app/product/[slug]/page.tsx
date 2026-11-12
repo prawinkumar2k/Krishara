@@ -10,6 +10,11 @@ import { ProductGallery } from "@/components/ProductGallery";
 import { ProductBuyBox } from "@/components/ProductBuyBox";
 import { ProductCard } from "@/components/ProductCard";
 import { Reveal } from "@/components/Reveal";
+import { ReviewForm } from "@/components/ReviewForm";
+import { getCurrentUser } from "@/lib/dal";
+import { hasDeliveredPurchase } from "./review-actions";
+import { db, schema } from "@/db";
+import { and, eq } from "drizzle-orm";
 import { getAllSlugs, getProductBySlug, getReviews } from "@/lib/catalog";
 
 export async function generateStaticParams() {
@@ -44,6 +49,14 @@ async function Reviews({ productId }: { productId: string }) {
       </ul>
     </div>
   );
+}
+
+/** Only verified buyers (delivered order) see the form. Streams in separately so the page shell stays static. */
+async function ReviewBox({ productId, slug }: { productId: string; slug: string }) {
+  const user = await getCurrentUser();
+  if (!user || !(await hasDeliveredPurchase(user.id, productId))) return null;
+  const [existing] = await db.select().from(schema.reviews).where(and(eq(schema.reviews.productId, productId), eq(schema.reviews.userId, user.id)));
+  return <div className="mt-5"><ReviewForm productId={productId} slug={slug} existing={existing} /></div>;
 }
 
 async function Detail({ params }: { params: Promise<{ slug: string }> }) {
@@ -85,6 +98,7 @@ async function Detail({ params }: { params: Promise<{ slug: string }> }) {
           <div className="mt-8 border-t border-[#09492e]/10 pt-6">
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#09492e]">Reviews</h2>
             <Suspense fallback={<div className="skeleton h-16" />}><Reviews productId={p.id} /></Suspense>
+            <Suspense fallback={null}><ReviewBox productId={p.id} slug={p.slug} /></Suspense>
           </div>
         </Reveal>
       </div>

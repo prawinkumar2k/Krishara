@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 export const SESSION_COOKIE = "krishara_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 14; // 14 days
 
-export type SessionPayload = { userId: string; role: "customer" | "admin" };
+export type SessionPayload = { userId: string; role: "customer" | "admin"; v?: number };
 
 function key() {
   const secret = process.env.SESSION_SECRET;
@@ -41,8 +41,12 @@ export async function createSession(payload: SessionPayload) {
     path: "/",
     maxAge: MAX_AGE_SECONDS,
   });
+  // Non-sensitive hint (NOT the session): lets the browser know to sync the bag. Carries no identity.
+  (await cookies()).set("krishara_auth", "1", { httpOnly: false, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: MAX_AGE_SECONDS });
 }
 
 export async function deleteSession() {
-  (await cookies()).delete(SESSION_COOKIE);
+  const jar = await cookies();
+  jar.delete(SESSION_COOKIE);
+  jar.delete("krishara_auth");
 }

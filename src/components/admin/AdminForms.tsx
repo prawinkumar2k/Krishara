@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { Upload } from "lucide-react";
 import {
-  createCoupon, retryDeadJob, runQueueNow, saveProduct, saveSettings, toggleCoupon, toggleProduct, updateOrderStatus, uploadImage,
+  createCoupon, moderateReview, retryDeadJob, runQueueNow, saveProduct, saveSettings, toggleCoupon, toggleProduct, updateOrderStatus, uploadImage,
   type FormState,
 } from "@/app/admin/actions";
 import { adminBtn, adminBtnGhost, adminField } from "./ui";
@@ -148,5 +148,16 @@ export function SettingsForm({ values }: { values: { shippingFlat: number; freeS
       <div><label className={lbl}>Max COD order (₹)</label><input name="cod_max" type="number" min={0} defaultValue={values.codMax} className={adminField} /></div>
       <div className="flex items-center gap-4 sm:col-span-2"><button disabled={pending} className={adminBtn}>{pending ? "Saving…" : "Save settings"}</button><Msg s={state} /></div>
     </form>
+  );
+}
+
+/* ───────── Reviews ───────── */
+export function ReviewActions({ id, approved }: { id: string; approved: boolean }) {
+  const [pending, start] = useTransition();
+  return (
+    <div className="flex justify-end gap-2">
+      {!approved && <button type="button" disabled={pending} onClick={() => start(() => moderateReview(id, "approve"))} className={adminBtn}>Approve</button>}
+      <button type="button" disabled={pending} onClick={() => start(() => moderateReview(id, "delete"))} className={adminBtnGhost}>Delete</button>
+    </div>
   );
 }

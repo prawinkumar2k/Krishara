@@ -26,6 +26,8 @@ export const users = sqliteTable(
     name: text("name").notNull(),
     phone: text("phone"),
     passwordHash: text("password_hash").notNull(),
+    /** bumped on password change → every older session token stops working */
+    tokenVersion: integer("token_version").notNull().default(0),
     role: text("role", { enum: ["customer", "admin"] })
       .notNull()
       .default("customer"),
@@ -357,4 +359,26 @@ export const locks = sqliteTable("locks", {
   name: text("name").primaryKey(),
   owner: text("owner").notNull(),
   lockedUntil: integer("locked_until").notNull(), // epoch ms
+});
+
+/* ───────────── Password reset + cross-device cart ───────────── */
+
+/** Only the SHA-256 of the emailed token is stored, so a DB leak can't be used to reset passwords. */
+export const passwordResets = sqliteTable(
+  "password_resets",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: integer("expires_at").notNull(), // epoch ms
+    usedAt: integer("used_at"),
+  },
+  (t) => [index("password_resets_user_idx").on(t.userId)],
+);
+
+/** Logged-in users' bag + wishlist, so they follow them across devices. */
+export const userState = sqliteTable("user_state", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  cart: text("cart", { mode: "json" }).$type<unknown[]>().notNull().default(sql`'[]'`),
+  wishlist: text("wishlist", { mode: "json" }).$type<unknown[]>().notNull().default(sql`'[]'`),
+  updatedAt: integer("updated_at").notNull().default(0),
 });
